@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+/* Prose styles for rendered markdown segments */
+.segment-block {
+  @apply mb-4 leading-relaxed;
+}
+
+.segment-block h1 {
+  @apply text-3xl font-bold mb-4 mt-8 text-gray-50;
+}
+
+.segment-block h2 {
+  @apply text-2xl font-semibold mb-3 mt-6 text-gray-50;
+}
+
+.segment-block h3 {
+  @apply text-xl font-semibold mb-2 mt-4 text-gray-100;
+}
+
+.segment-block p {
+  @apply text-gray-200 mb-0;
+}
+
+.segment-block ul,
+.segment-block ol {
+  @apply pl-6 text-gray-200 space-y-1;
+}
+
+.segment-block ul {
+  @apply list-disc;
+}
+
+.segment-block ol {
+  @apply list-decimal;
+}
+
+.segment-block blockquote {
+  @apply border-l-2 border-gray-600 pl-4 italic text-gray-400;
+}
+
+.segment-block code {
+  @apply bg-gray-800 px-1.5 py-0.5 rounded text-sm text-gray-300;
+}
+
+.segment-block pre {
+  @apply bg-gray-800 p-4 rounded-lg overflow-x-auto my-2;
+}
+
+.segment-block pre code {
+  @apply bg-transparent p-0;
+}
+
+.segment-block a {
+  @apply text-blue-400 underline hover:text-blue-300;
+}
+
+.segment-block strong {
+  @apply text-gray-50 font-semibold;
+}

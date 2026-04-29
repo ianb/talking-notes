@@ -1,0 +1,7 @@
+plugin:
+  - "!@tapjs/typescript"
+  - "!@tapjs/reporter"
+node-arg:
+  - --import=tsx
+include:
+  - test/**/*.test.ts
