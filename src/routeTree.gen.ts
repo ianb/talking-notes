@@ -9,9 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SpotterRouteImport } from './routes/spotter'
 import { Route as ReadingRouteImport } from './routes/reading'
 import { Route as IndexRouteImport } from './routes/index'
 
+const SpotterRoute = SpotterRouteImport.update({
+  id: '/spotter',
+  path: '/spotter',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReadingRoute = ReadingRouteImport.update({
   id: '/reading',
   path: '/reading',
@@ -26,31 +32,42 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/reading': typeof ReadingRoute
+  '/spotter': typeof SpotterRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/reading': typeof ReadingRoute
+  '/spotter': typeof SpotterRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/reading': typeof ReadingRoute
+  '/spotter': typeof SpotterRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/reading'
+  fullPaths: '/' | '/reading' | '/spotter'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/reading'
-  id: '__root__' | '/' | '/reading'
+  to: '/' | '/reading' | '/spotter'
+  id: '__root__' | '/' | '/reading' | '/spotter'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ReadingRoute: typeof ReadingRoute
+  SpotterRoute: typeof SpotterRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/spotter': {
+      id: '/spotter'
+      path: '/spotter'
+      fullPath: '/spotter'
+      preLoaderRoute: typeof SpotterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reading': {
       id: '/reading'
       path: '/reading'
@@ -71,6 +88,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ReadingRoute: ReadingRoute,
+  SpotterRoute: SpotterRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

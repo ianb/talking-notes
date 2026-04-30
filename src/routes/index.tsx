@@ -100,6 +100,16 @@ function HomeScreen() {
               the result into an annotated journal.
             </p>
           </Link>
+          <Link
+            to="/spotter"
+            className="block rounded-lg border border-gray-700 hover:border-blue-500 bg-gray-900/40 px-5 py-4 transition-colors"
+          >
+            <div className="font-semibold text-gray-100">Spotter</div>
+            <p className="text-sm text-gray-400 mt-1">
+              Live transcription with keyword spotting — matched phrases are
+              highlighted as you speak.
+            </p>
+          </Link>
         </section>
       </div>
     </div>

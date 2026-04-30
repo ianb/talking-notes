@@ -1,5 +1,5 @@
 import { useReadingState } from "../state.js";
-import type { LiveTranscriptionStatus } from "../hooks/useLiveTranscription.js";
+import type { LiveTranscriptionStatus } from "../../../hooks/useLiveTranscription.js";
 
 interface ReadingToolbarProps {
   status: LiveTranscriptionStatus;

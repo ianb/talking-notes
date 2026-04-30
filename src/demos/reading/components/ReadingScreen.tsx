@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useReadingState } from "../state.js";
 import { useApiKeys } from "../../../apiKeys.js";
-import { useLiveTranscription } from "../hooks/useLiveTranscription.js";
+import { useLiveTranscription } from "../../../hooks/useLiveTranscription.js";
 import { useScrollTracker } from "../hooks/useScrollTracker.js";
 import { useSelectionTracker } from "../hooks/useSelectionTracker.js";
 import { DocumentView } from "./DocumentView.js";
@@ -13,10 +13,17 @@ export function ReadingScreen() {
   const { state, dispatch } = useReadingState();
   const { mistral } = useApiKeys();
 
+  // The shared transcription hook is timing-agnostic; we stamp deltas with
+  // a reading-relative time here, where readingStartTime lives.
+  const readingStartTime = state.readingStartTime;
   const onDelta = useCallback(
-    (delta: string, time: number) =>
-      dispatch({ type: "APPEND_TRANSCRIPT_DELTA", delta, time }),
-    [dispatch],
+    (delta: string) =>
+      dispatch({
+        type: "APPEND_TRANSCRIPT_DELTA",
+        delta,
+        time: Date.now() - (readingStartTime ?? 0),
+      }),
+    [dispatch, readingStartTime],
   );
 
   const onDone = useCallback(
@@ -34,7 +41,6 @@ export function ReadingScreen() {
     useLiveTranscription({
       apiKey: mistral!,
       enabled: state.phase === "reading",
-      readingStartTime: state.readingStartTime!,
       onDelta,
       onDone,
     });

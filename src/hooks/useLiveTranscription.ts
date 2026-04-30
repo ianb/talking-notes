@@ -4,6 +4,12 @@
  *
  * Resources (MediaStream, AudioContext, Worklet, WebSocket) are created
  * when `enabled` becomes true and torn down when it becomes false.
+ *
+ * The hook itself is timing-agnostic: each delta callback receives just
+ * the delta string. Consumers that care about wall-clock or relative time
+ * should call `Date.now()` (or subtract their own start time) at the
+ * call site — the transcription pipeline is not the right authority on
+ * "when did the user start reading/recording/etc."
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -18,8 +24,7 @@ export type LiveTranscriptionStatus =
 interface UseLiveTranscriptionOptions {
   apiKey: string;
   enabled: boolean;
-  readingStartTime: number;
-  onDelta: (delta: string, time: number) => void;
+  onDelta: (delta: string) => void;
   onDone: (text?: string) => void;
 }
 
@@ -35,7 +40,6 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 export function useLiveTranscription({
   apiKey,
   enabled,
-  readingStartTime,
   onDelta,
   onDone,
 }: UseLiveTranscriptionOptions) {
@@ -126,7 +130,7 @@ export function useLiveTranscription({
           if (msg.type === "transcription.text.delta") {
             const delta = msg.delta ?? msg.text ?? "";
             if (delta) {
-              onDeltaRef.current(delta, Date.now() - readingStartTime);
+              onDeltaRef.current(delta);
             }
           } else if (msg.type === "transcription.done") {
             onDoneRef.current(msg.text);
@@ -184,7 +188,7 @@ export function useLiveTranscription({
 
     return cleanup;
 
-  }, [enabled, apiKey, readingStartTime]);
+  }, [enabled, apiKey]);
 
   return { status, error };
 }
