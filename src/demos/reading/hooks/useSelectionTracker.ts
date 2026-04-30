@@ -17,13 +17,13 @@ export function useSelectionTracker(enabled: boolean): {
   selection: PendingSelection | null;
   clear: () => void;
 } {
-  const [selection, setSelection] = useState<PendingSelection | null>(null);
+  // Internal state is preserved across enable toggles, but `selection`
+  // returned to callers is gated by `enabled` so disabling acts like a
+  // clear without needing a setState in an effect.
+  const [internalSel, setInternalSel] = useState<PendingSelection | null>(null);
 
   useEffect(() => {
-    if (!enabled) {
-      setSelection(null);
-      return;
-    }
+    if (!enabled) return;
 
     let timer: ReturnType<typeof setTimeout> | null = null;
     function handleChange() {
@@ -31,14 +31,14 @@ export function useSelectionTracker(enabled: boolean): {
       timer = setTimeout(() => {
         const sel = window.getSelection();
         if (!sel || sel.isCollapsed || !sel.toString().trim()) {
-          setSelection(null);
+          setInternalSel(null);
           return;
         }
         let node: Node | null = sel.anchorNode;
         while (node && node !== document.body) {
           if (node instanceof HTMLElement && node.dataset.segmentId) {
             const range = sel.getRangeAt(0);
-            setSelection({
+            setInternalSel({
               segmentId: node.dataset.segmentId,
               text: sel.toString().trim(),
               rect: range.getBoundingClientRect(),
@@ -47,7 +47,7 @@ export function useSelectionTracker(enabled: boolean): {
           }
           node = node.parentNode;
         }
-        setSelection(null);
+        setInternalSel(null);
       }, 300);
     }
 
@@ -59,9 +59,10 @@ export function useSelectionTracker(enabled: boolean): {
   }, [enabled]);
 
   function clear() {
-    window.getSelection()?.removeAllRanges();
-    setSelection(null);
+    const sel = window.getSelection();
+    if (sel) sel.removeAllRanges();
+    setInternalSel(null);
   }
 
-  return { selection, clear };
+  return { selection: enabled ? internalSel : null, clear };
 }

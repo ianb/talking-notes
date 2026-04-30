@@ -1,4 +1,4 @@
-import { useAppState } from "../state.js";
+import { useReadingState } from "../state.js";
 import type { LiveTranscriptionStatus } from "../hooks/useLiveTranscription.js";
 
 interface ReadingToolbarProps {
@@ -7,7 +7,7 @@ interface ReadingToolbarProps {
 }
 
 export function ReadingToolbar({ status, error }: ReadingToolbarProps) {
-  const { dispatch } = useAppState();
+  const { dispatch } = useReadingState();
 
   function handleComplete() {
     dispatch({ type: "START_PROCESSING" });

@@ -42,11 +42,15 @@ export function useLiveTranscription({
   const [status, setStatus] = useState<LiveTranscriptionStatus>("idle");
   const [error, setError] = useState<string | null>(null);
 
-  // Keep callbacks in refs so the effect doesn't tear down on every render.
+  // Keep callbacks in refs so the main effect doesn't tear down on every
+  // render. Refs are updated inside an effect so they aren't written during
+  // render.
   const onDeltaRef = useRef(onDelta);
   const onDoneRef = useRef(onDone);
-  onDeltaRef.current = onDelta;
-  onDoneRef.current = onDone;
+  useEffect(() => {
+    onDeltaRef.current = onDelta;
+    onDoneRef.current = onDone;
+  });
 
   useEffect(() => {
     if (!enabled) return;
@@ -83,13 +87,15 @@ export function useLiveTranscription({
       }
     }
 
-    setStatus("connecting");
-    setError(null);
-
     (async () => {
+      // setState calls run after the first await tick so they don't fire
+      // synchronously inside the effect body. The "connecting" state
+      // models WS lifecycle, which is an external system.
       try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         if (disposed) return cleanup();
+        setStatus("connecting");
+        setError(null);
 
         audioContext = new AudioContext();
         await audioContext.audioWorklet.addModule(pcmProcessorUrl);
@@ -113,7 +119,7 @@ export function useLiveTranscription({
           let msg: { type?: string; delta?: string; text?: string; error?: unknown };
           try {
             msg = JSON.parse(event.data);
-          } catch {
+          } catch (_e) {
             return;
           }
 
@@ -125,11 +131,13 @@ export function useLiveTranscription({
           } else if (msg.type === "transcription.done") {
             onDoneRef.current(msg.text);
           } else if (msg.type === "error") {
-            const errMsg =
-              typeof msg.error === "object"
-                ? (msg.error as { message?: string })?.message ??
-                  JSON.stringify(msg.error)
-                : String(msg.error ?? "Transcription error");
+            let errMsg: string;
+            if (typeof msg.error === "object" && msg.error !== null) {
+              const objErr = msg.error as { message?: string };
+              errMsg = objErr.message ?? JSON.stringify(msg.error);
+            } else {
+              errMsg = String(msg.error ?? "Transcription error");
+            }
             errored = true;
             setError(errMsg);
             setStatus("error");
@@ -175,7 +183,7 @@ export function useLiveTranscription({
     })();
 
     return cleanup;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- status is intentionally excluded
+
   }, [enabled, apiKey, readingStartTime]);
 
   return { status, error };

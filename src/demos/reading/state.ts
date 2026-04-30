@@ -6,12 +6,8 @@ import type {
   SynthesisResult,
 } from "./types.js";
 
-export interface AppState {
+export interface ReadingState {
   phase: AppPhase;
-  /** OpenAI API key (for synthesis). */
-  apiKey: string | null;
-  /** Mistral API key (for Voxtral live transcription). */
-  mistralApiKey: string | null;
   document: ParsedDocument | null;
   events: SessionEvent[];
   readingStartTime: number | null;
@@ -20,9 +16,7 @@ export interface AppState {
   error: string | null;
 }
 
-export type AppAction =
-  | { type: "SET_API_KEY"; key: string }
-  | { type: "SET_MISTRAL_API_KEY"; key: string }
+export type ReadingAction =
   | { type: "SET_DOCUMENT"; doc: ParsedDocument }
   | { type: "START_READING" }
   | { type: "APPEND_TRANSCRIPT_DELTA"; delta: string; time: number }
@@ -35,10 +29,8 @@ export type AppAction =
   | { type: "SET_ERROR"; error: string }
   | { type: "RESET" };
 
-export const initialState: AppState = {
+export const initialState: ReadingState = {
   phase: "setup",
-  apiKey: localStorage.getItem("openai-api-key"),
-  mistralApiKey: localStorage.getItem("mistral-api-key"),
   document: null,
   events: [],
   readingStartTime: null,
@@ -58,20 +50,17 @@ function nextId(prefix: string, counter: () => number): string {
 /** Mark the last event as no longer pending if it's a pending transcript. */
 function finalizePending(events: SessionEvent[]): SessionEvent[] {
   const last = events[events.length - 1];
-  if (last?.kind === "transcript" && last.pending) {
+  if (last && last.kind === "transcript" && last.pending) {
     return [...events.slice(0, -1), { ...last, pending: false }];
   }
   return events;
 }
 
-export function appReducer(state: AppState, action: AppAction): AppState {
+export function readingReducer(
+  state: ReadingState,
+  action: ReadingAction,
+): ReadingState {
   switch (action.type) {
-    case "SET_API_KEY":
-      localStorage.setItem("openai-api-key", action.key);
-      return { ...state, apiKey: action.key };
-    case "SET_MISTRAL_API_KEY":
-      localStorage.setItem("mistral-api-key", action.key);
-      return { ...state, mistralApiKey: action.key };
     case "SET_DOCUMENT":
       return { ...state, document: action.doc };
     case "START_READING":
@@ -86,7 +75,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       };
     case "APPEND_TRANSCRIPT_DELTA": {
       const last = state.events[state.events.length - 1];
-      if (last?.kind === "transcript" && last.pending) {
+      if (last && last.kind === "transcript" && last.pending) {
         const updated: SessionEvent = {
           ...last,
           text: last.text + action.delta,
@@ -110,7 +99,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     }
     case "FINALIZE_TRANSCRIPT": {
       const last = state.events[state.events.length - 1];
-      if (last?.kind === "transcript" && last.pending) {
+      if (last && last.kind === "transcript" && last.pending) {
         const updated: SessionEvent = {
           ...last,
           pending: false,
@@ -133,7 +122,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         visibleSegmentIds: action.visibleSegmentIds,
       };
       // Drop the previous scroll if no transcript/selection arrived since
-      if (last?.kind === "scroll") {
+      if (last && last.kind === "scroll") {
         return { ...state, events: [...events.slice(0, -1), newEvent] };
       }
       return { ...state, events: [...events, newEvent] };
@@ -163,19 +152,15 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case "SET_ERROR":
       return { ...state, error: action.error };
     case "RESET":
-      return {
-        ...initialState,
-        apiKey: state.apiKey,
-        mistralApiKey: state.mistralApiKey,
-      };
+      return initialState;
   }
 }
 
-export const AppContext = createContext<{
-  state: AppState;
-  dispatch: Dispatch<AppAction>;
+export const ReadingContext = createContext<{
+  state: ReadingState;
+  dispatch: Dispatch<ReadingAction>;
 }>({ state: initialState, dispatch: () => {} });
 
-export function useAppState() {
-  return useContext(AppContext);
+export function useReadingState() {
+  return useContext(ReadingContext);
 }

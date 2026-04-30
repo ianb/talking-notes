@@ -14,7 +14,9 @@
     "test": "tap"
   },
   "dependencies": {
+    "@tanstack/react-router": "^1.168.26",
     "@tanstack/react-virtual": "^3.13.24",
+    "@tanstack/router-plugin": "^1.167.29",
     "@types/marked": "^5.0.2",
     "marked": "^18.0.0",
     "react": "^19.1.0",

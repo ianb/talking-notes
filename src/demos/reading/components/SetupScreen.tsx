@@ -1,21 +1,20 @@
 import { useState } from "react";
-import { useAppState } from "../state.js";
+import { Link } from "@tanstack/react-router";
+import { useReadingState } from "../state.js";
+import { useApiKeys } from "../../../apiKeys.js";
 import { parseDocument } from "../utils/documentParser.js";
 import { fetchMarkdownFromUrl } from "../api/jinaReader.js";
 
 export function SetupScreen() {
-  const { state, dispatch } = useAppState();
-  const [apiKey, setApiKey] = useState(state.apiKey ?? "");
-  const [mistralKey, setMistralKey] = useState(state.mistralApiKey ?? "");
+  const { dispatch } = useReadingState();
+  const { openai, mistral } = useApiKeys();
   const [markdownInput, setMarkdownInput] = useState("");
   const [urlInput, setUrlInput] = useState("");
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const canStart =
-    apiKey.startsWith("sk-") &&
-    mistralKey.trim().length > 0 &&
-    markdownInput.trim().length > 0;
+  const keysReady = !!openai && !!mistral;
+  const canStart = keysReady && markdownInput.trim().length > 0;
 
   async function handleFetchUrl() {
     if (!urlInput.trim()) return;
@@ -33,8 +32,6 @@ export function SetupScreen() {
 
   function handleStart() {
     if (!canStart) return;
-    dispatch({ type: "SET_API_KEY", key: apiKey });
-    dispatch({ type: "SET_MISTRAL_API_KEY", key: mistralKey });
     const sourceUrl = urlInput.trim() || undefined;
     const doc = parseDocument(markdownInput.trim(), sourceUrl);
     dispatch({ type: "SET_DOCUMENT", doc });
@@ -44,37 +41,28 @@ export function SetupScreen() {
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center p-8">
       <div className="w-full max-w-2xl space-y-6">
-        <h1 className="text-3xl font-bold text-center">Talking Notes</h1>
-        <p className="text-gray-400 text-center">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">Reading Demo</h1>
+          <Link
+            to="/"
+            className="text-sm text-gray-400 hover:text-gray-200 transition-colors"
+          >
+            ← Home
+          </Link>
+        </div>
+        <p className="text-gray-400">
           Read a document while speaking your thoughts aloud.
         </p>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-300">
-            OpenAI API Key <span className="text-gray-500">(synthesis)</span>
-          </label>
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="sk-..."
-            className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-300">
-            Mistral API Key{" "}
-            <span className="text-gray-500">(live transcription)</span>
-          </label>
-          <input
-            type="password"
-            value={mistralKey}
-            onChange={(e) => setMistralKey(e.target.value)}
-            placeholder="..."
-            className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
-          />
-        </div>
+        {!keysReady && (
+          <div className="rounded-lg border border-amber-600/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+            API keys aren't configured.{" "}
+            <Link to="/" className="underline hover:text-amber-100">
+              Set them up on the home page
+            </Link>{" "}
+            first.
+          </div>
+        )}
 
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-300">
@@ -96,7 +84,7 @@ export function SetupScreen() {
               {fetching ? "Fetching…" : "Fetch"}
             </button>
           </div>
-          {fetchError && <p className="text-sm text-red-400">{fetchError}</p>}
+          {fetchError ? <p className="text-sm text-red-400">{fetchError}</p> : null}
         </div>
 
         <div className="space-y-2">

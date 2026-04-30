@@ -24,13 +24,16 @@ export function EventFeed({ events, document }: EventFeedProps) {
     count: events.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => 80,
-    measureElement: (element) => element?.getBoundingClientRect().height ?? 80,
+    measureElement: (element) =>
+      element ? element.getBoundingClientRect().height : 80,
     overscan: 10,
   });
 
   // Only adjust scroll position for items above the viewport when the user
   // is scrolling backward (reviewing history). Never adjust when items at
-  // the bottom are growing (pending transcript deltas).
+  // the bottom are growing (pending transcript deltas). The 3-arg
+  // signature is dictated by TanStack Virtual's API.
+  /* eslint-disable max-params */
   virtualizer.shouldAdjustScrollPositionOnItemSizeChange = (
     item,
     _delta,
@@ -38,6 +41,7 @@ export function EventFeed({ events, document }: EventFeedProps) {
   ) =>
     item.start < (instance.scrollOffset ?? 0) &&
     instance.scrollDirection === "backward";
+  /* eslint-enable max-params */
 
   // Detect USER scrolling intent (wheel, touch, scrollbar drag). These
   // never fire from virtualizer.scrollToIndex, so they cleanly distinguish
@@ -73,7 +77,7 @@ export function EventFeed({ events, document }: EventFeedProps) {
   //      bottom in view as it expands).
   const lastEvent = events.length > 0 ? events[events.length - 1] : undefined;
   const pendingLen =
-    lastEvent?.kind === "transcript" && lastEvent.pending
+    lastEvent && lastEvent.kind === "transcript" && lastEvent.pending
       ? lastEvent.text.length
       : -1;
 
@@ -164,7 +168,7 @@ function EventRow({
         <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-500 mb-1">
           <span>Voice</span>
           <span>{formatTime(event.startTime)}</span>
-          {event.pending && <span className="text-blue-400">• live</span>}
+          {event.pending ? <span className="text-blue-400">• live</span> : null}
         </div>
         <p className="text-gray-100 whitespace-pre-wrap">{event.text}</p>
       </div>

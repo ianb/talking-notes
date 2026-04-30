@@ -1,6 +1,7 @@
 import { defineConfig, type PluginOption } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import { WebSocketServer, WebSocket } from "ws";
 
 /**
@@ -104,8 +105,16 @@ function voxtralProxy(): PluginOption {
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), voxtralProxy()],
+  plugins: [
+    TanStackRouterVite({ target: "react", autoCodeSplitting: true }),
+    react(),
+    tailwindcss(),
+    voxtralProxy(),
+  ],
   root: ".",
+  // Expose OPENAI_* / MISTRAL_* from .env to client code (dev-only fallback
+  // is gated behind import.meta.env.DEV in src/state.ts).
+  envPrefix: ["VITE_", "OPENAI_", "MISTRAL_"],
   build: {
     outDir: "dist",
   },

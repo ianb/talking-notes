@@ -23,11 +23,11 @@ class PcmProcessor extends AudioWorkletProcessor {
     const sourceData = input[0]; // mono channel
     const ratio = sampleRate / TARGET_SAMPLE_RATE;
 
-    for (let i = 0; i < sourceData.length; i++) {
+    for (const [i, sourceDatum] of sourceData.entries()) {
       const targetIndex = i / ratio;
       const idx = Math.floor(targetIndex);
       if (idx >= 0 && this._offset + idx < this._buffer.length) {
-        this._buffer[this._offset + idx] = sourceData[i];
+        this._buffer[this._offset + idx] = sourceDatum;
       }
     }
 

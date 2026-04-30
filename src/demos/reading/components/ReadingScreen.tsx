@@ -1,5 +1,6 @@
 import { useCallback } from "react";
-import { useAppState } from "../state.js";
+import { useReadingState } from "../state.js";
+import { useApiKeys } from "../../../apiKeys.js";
 import { useLiveTranscription } from "../hooks/useLiveTranscription.js";
 import { useScrollTracker } from "../hooks/useScrollTracker.js";
 import { useSelectionTracker } from "../hooks/useSelectionTracker.js";
@@ -9,7 +10,8 @@ import { EventFeed } from "./EventFeed.js";
 import { SelectionAddButton } from "./SelectionAddButton.js";
 
 export function ReadingScreen() {
-  const { state, dispatch } = useAppState();
+  const { state, dispatch } = useReadingState();
+  const { mistral } = useApiKeys();
 
   const onDelta = useCallback(
     (delta: string, time: number) =>
@@ -30,7 +32,7 @@ export function ReadingScreen() {
 
   const { status: transcriptionStatus, error: transcriptionError } =
     useLiveTranscription({
-      apiKey: state.mistralApiKey!,
+      apiKey: mistral!,
       enabled: state.phase === "reading",
       readingStartTime: state.readingStartTime!,
       onDelta,
@@ -72,9 +74,7 @@ export function ReadingScreen() {
           <EventFeed events={state.events} document={state.document} />
         </aside>
       </div>
-      {selection && (
-        <SelectionAddButton selection={selection} onAdd={handleAddSelection} />
-      )}
+      {selection ? <SelectionAddButton selection={selection} onAdd={handleAddSelection} /> : null}
     </div>
   );
 }

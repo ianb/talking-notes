@@ -1,5 +1,5 @@
 import t from "tap";
-import { parseDocument } from "../src/utils/documentParser.js";
+import { parseDocument } from "../../../src/demos/reading/utils/documentParser.js";
 
 t.test("parses markdown into segments", (t) => {
   const md = `# Hello World

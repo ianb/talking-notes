@@ -1,28 +1,15 @@
 import t from "tap";
-import type { ParsedDocument } from "../src/types.js";
+import type { ParsedDocument } from "../../../src/demos/reading/types.js";
 
-// Stub localStorage for Node before importing state module
-if (typeof globalThis.localStorage === "undefined") {
-  const store: Record<string, string> = {};
-  (globalThis as Record<string, unknown>).localStorage = {
-    getItem: (k: string) => store[k] ?? null,
-    setItem: (k: string, v: string) => {
-      store[k] = v;
-    },
-    removeItem: (k: string) => {
-      delete store[k];
-    },
-  };
-}
+const { readingReducer } = await import(
+  "../../../src/demos/reading/state.js"
+);
+type ReadingState =
+  import("../../../src/demos/reading/state.js").ReadingState;
 
-const { appReducer } = await import("../src/state.js");
-type AppState = import("../src/state.js").AppState;
-
-function makeState(overrides: Partial<AppState> = {}): AppState {
+function makeState(overrides: Partial<ReadingState> = {}): ReadingState {
   return {
     phase: "setup",
-    apiKey: null,
-    mistralApiKey: null,
     document: null,
     events: [],
     readingStartTime: null,
@@ -39,29 +26,17 @@ const fakeDoc: ParsedDocument = {
   segments: [{ id: "seg-0", index: 0, markdown: "# Test", plainText: "Test" }],
 };
 
-t.test("SET_API_KEY stores key", (t) => {
-  const state = appReducer(makeState(), { type: "SET_API_KEY", key: "sk-test" });
-  t.equal(state.apiKey, "sk-test");
-  t.end();
-});
-
-t.test("SET_MISTRAL_API_KEY stores key", (t) => {
-  const state = appReducer(makeState(), {
-    type: "SET_MISTRAL_API_KEY",
-    key: "mst-test",
-  });
-  t.equal(state.mistralApiKey, "mst-test");
-  t.end();
-});
-
 t.test("SET_DOCUMENT stores document", (t) => {
-  const state = appReducer(makeState(), { type: "SET_DOCUMENT", doc: fakeDoc });
+  const state = readingReducer(makeState(), {
+    type: "SET_DOCUMENT",
+    doc: fakeDoc,
+  });
   t.equal(state.document?.title, "Test");
   t.end();
 });
 
 t.test("START_READING transitions to reading phase", (t) => {
-  const state = appReducer(makeState(), { type: "START_READING" });
+  const state = readingReducer(makeState(), { type: "START_READING" });
   t.equal(state.phase, "reading");
   t.ok(state.readingStartTime);
   t.same(state.events, []);
@@ -69,7 +44,7 @@ t.test("START_READING transitions to reading phase", (t) => {
 });
 
 t.test("APPEND_TRANSCRIPT_DELTA creates pending transcript", (t) => {
-  const state = appReducer(makeState({ phase: "reading" }), {
+  const state = readingReducer(makeState({ phase: "reading" }), {
     type: "APPEND_TRANSCRIPT_DELTA",
     delta: "hello ",
     time: 100,
@@ -85,12 +60,12 @@ t.test("APPEND_TRANSCRIPT_DELTA creates pending transcript", (t) => {
 });
 
 t.test("APPEND_TRANSCRIPT_DELTA extends pending transcript", (t) => {
-  let state = appReducer(makeState({ phase: "reading" }), {
+  let state = readingReducer(makeState({ phase: "reading" }), {
     type: "APPEND_TRANSCRIPT_DELTA",
     delta: "hello ",
     time: 100,
   });
-  state = appReducer(state, {
+  state = readingReducer(state, {
     type: "APPEND_TRANSCRIPT_DELTA",
     delta: "world",
     time: 200,
@@ -105,12 +80,12 @@ t.test("APPEND_TRANSCRIPT_DELTA extends pending transcript", (t) => {
 });
 
 t.test("ADD_SCROLL appends after transcript, finalizing it", (t) => {
-  let state = appReducer(makeState({ phase: "reading" }), {
+  let state = readingReducer(makeState({ phase: "reading" }), {
     type: "APPEND_TRANSCRIPT_DELTA",
     delta: "some speech",
     time: 100,
   });
-  state = appReducer(state, {
+  state = readingReducer(state, {
     type: "ADD_SCROLL",
     time: 200,
     visibleSegmentIds: ["seg-0"],
@@ -125,12 +100,12 @@ t.test("ADD_SCROLL appends after transcript, finalizing it", (t) => {
 });
 
 t.test("ADD_SCROLL replaces previous scroll when no text between", (t) => {
-  let state = appReducer(makeState({ phase: "reading" }), {
+  let state = readingReducer(makeState({ phase: "reading" }), {
     type: "ADD_SCROLL",
     time: 100,
     visibleSegmentIds: ["seg-0"],
   });
-  state = appReducer(state, {
+  state = readingReducer(state, {
     type: "ADD_SCROLL",
     time: 200,
     visibleSegmentIds: ["seg-1"],
@@ -145,17 +120,17 @@ t.test("ADD_SCROLL replaces previous scroll when no text between", (t) => {
 });
 
 t.test("ADD_SCROLL keeps previous scroll when text arrived between", (t) => {
-  let state = appReducer(makeState({ phase: "reading" }), {
+  let state = readingReducer(makeState({ phase: "reading" }), {
     type: "ADD_SCROLL",
     time: 100,
     visibleSegmentIds: ["seg-0"],
   });
-  state = appReducer(state, {
+  state = readingReducer(state, {
     type: "APPEND_TRANSCRIPT_DELTA",
     delta: "talking",
     time: 150,
   });
-  state = appReducer(state, {
+  state = readingReducer(state, {
     type: "ADD_SCROLL",
     time: 200,
     visibleSegmentIds: ["seg-1"],
@@ -168,12 +143,12 @@ t.test("ADD_SCROLL keeps previous scroll when text arrived between", (t) => {
 });
 
 t.test("ADD_SELECTION appends and finalizes pending transcript", (t) => {
-  let state = appReducer(makeState({ phase: "reading" }), {
+  let state = readingReducer(makeState({ phase: "reading" }), {
     type: "APPEND_TRANSCRIPT_DELTA",
     delta: "speaking",
     time: 100,
   });
-  state = appReducer(state, {
+  state = readingReducer(state, {
     type: "ADD_SELECTION",
     time: 200,
     segmentId: "seg-0",
@@ -193,12 +168,12 @@ t.test("ADD_SELECTION appends and finalizes pending transcript", (t) => {
 });
 
 t.test("FINALIZE_TRANSCRIPT flips pending flag", (t) => {
-  let state = appReducer(makeState({ phase: "reading" }), {
+  let state = readingReducer(makeState({ phase: "reading" }), {
     type: "APPEND_TRANSCRIPT_DELTA",
     delta: "hi",
     time: 100,
   });
-  state = appReducer(state, { type: "FINALIZE_TRANSCRIPT" });
+  state = readingReducer(state, { type: "FINALIZE_TRANSCRIPT" });
   const ev = state.events[0];
   if (ev.kind === "transcript") {
     t.equal(ev.pending, false);
@@ -207,7 +182,7 @@ t.test("FINALIZE_TRANSCRIPT flips pending flag", (t) => {
 });
 
 t.test("START_PROCESSING transitions to processing", (t) => {
-  const state = appReducer(makeState({ phase: "reading" }), {
+  const state = readingReducer(makeState({ phase: "reading" }), {
     type: "START_PROCESSING",
   });
   t.equal(state.phase, "processing");
@@ -215,18 +190,16 @@ t.test("START_PROCESSING transitions to processing", (t) => {
   t.end();
 });
 
-t.test("RESET preserves both API keys", (t) => {
-  const state = appReducer(
+t.test("RESET returns to initial state", (t) => {
+  const state = readingReducer(
     makeState({
       phase: "results",
-      apiKey: "sk-keep",
-      mistralApiKey: "mst-keep",
+      document: fakeDoc,
     }),
     { type: "RESET" },
   );
   t.equal(state.phase, "setup");
-  t.equal(state.apiKey, "sk-keep");
-  t.equal(state.mistralApiKey, "mst-keep");
   t.equal(state.document, null);
+  t.same(state.events, []);
   t.end();
 });

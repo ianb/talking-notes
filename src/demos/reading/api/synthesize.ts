@@ -69,23 +69,34 @@ interface SynthesisResponse {
   statements: Statement[];
 }
 
-export async function synthesize(
-  apiKey: string,
-  document: ParsedDocument,
-  events: SessionEvent[],
-): Promise<SynthesisResult> {
+interface SynthesizeOptions {
+  apiKey: string;
+  document: ParsedDocument;
+  events: SessionEvent[];
+}
+
+export async function synthesize({
+  apiKey,
+  document,
+  events,
+}: SynthesizeOptions): Promise<SynthesisResult> {
   const userMessage = buildUserMessage(document, events);
 
-  const response = (await openaiRequest(apiKey, "chat/completions", {
-    model: "gpt-4o",
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: userMessage },
-    ],
+  const response = (await openaiRequest({
+    apiKey,
+    endpoint: "chat/completions",
+    body: {
+      model: "gpt-4o",
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userMessage },
+      ],
+    },
   })) as { choices: { message: { content: string } }[] };
 
-  const content = response.choices[0]?.message.content ?? "{}";
+  const firstChoice = response.choices[0];
+  const content = firstChoice ? firstChoice.message.content : "{}";
   const parsed: SynthesisResponse = JSON.parse(content);
 
   const annotatedSegments: AnnotatedSegment[] = document.segments.map(

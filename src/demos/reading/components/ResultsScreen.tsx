@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { useAppState } from "../state.js";
+import { useReadingState } from "../state.js";
 import { AnnotatedDocumentView } from "./AnnotatedDocumentView.js";
 import { StatementsView } from "./StatementsView.js";
 
 type ViewTab = "annotated" | "statements";
 
 export function ResultsScreen() {
-  const { state, dispatch } = useAppState();
+  const { state, dispatch } = useReadingState();
   const [activeTab, setActiveTab] = useState<ViewTab>("annotated");
 
   if (!state.synthesisResult) return null;

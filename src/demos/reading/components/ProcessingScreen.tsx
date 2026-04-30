@@ -1,19 +1,21 @@
 import { useEffect, useRef } from "react";
-import { useAppState } from "../state.js";
+import { useReadingState } from "../state.js";
+import { useApiKeys } from "../../../apiKeys.js";
 import { synthesize } from "../api/synthesize.js";
 
 export function ProcessingScreen() {
-  const { state, dispatch } = useAppState();
+  const { state, dispatch } = useReadingState();
+  const { openai } = useApiKeys();
   const startedRef = useRef(false);
 
   useEffect(() => {
     if (startedRef.current) return;
-    if (!state.document || !state.apiKey) return;
+    if (!state.document || !openai) return;
     startedRef.current = true;
 
     dispatch({ type: "SET_PROCESSING_STATUS", status: "Analyzing your reading session…" });
 
-    synthesize(state.apiKey, state.document, state.events)
+    synthesize({ apiKey: openai, document: state.document, events: state.events })
       .then((result) => {
         dispatch({ type: "SET_SYNTHESIS_RESULT", result });
       })
@@ -25,7 +27,7 @@ export function ProcessingScreen() {
           status: `Error: ${err instanceof Error ? err.message : String(err)}`,
         });
       });
-  }, [state.document, state.apiKey, state.events, dispatch]);
+  }, [state.document, openai, state.events, dispatch]);
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center">
@@ -36,14 +38,12 @@ export function ProcessingScreen() {
           <div className="w-12 h-12 text-red-500 mx-auto text-4xl">!</div>
         )}
         <p className="text-gray-300">{state.processingStatus ?? "Processing…"}</p>
-        {state.error && (
-          <button
+        {state.error ? <button
             onClick={() => dispatch({ type: "RESET" })}
             className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg transition-colors"
           >
             Start Over
-          </button>
-        )}
+          </button> : null}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import t from "tap";
-import { renderMarkdown } from "../src/utils/markdown.js";
+import { renderMarkdown } from "../../../src/demos/reading/utils/markdown.js";
 
 t.test("renders a paragraph", (t) => {
   const html = renderMarkdown("Hello world");

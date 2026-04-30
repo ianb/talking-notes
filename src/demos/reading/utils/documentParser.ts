@@ -7,15 +7,15 @@ function stripMarkdown(md: string): string {
     .replace(/\*(.+?)\*/g, "$1")
     .replace(/_(.+?)_/g, "$1")
     .replace(/`(.+?)`/g, "$1")
-    .replace(/\[(.+?)\]\(.+?\)/g, "$1")
-    .replace(/!\[.*?\]\(.+?\)/g, "")
+    .replace(/\[(.+?)]\(.+?\)/g, "$1")
+    .replace(/!\[.*?]\(.+?\)/g, "")
     .replace(/>\s?/gm, "")
     .trim();
 }
 
 function extractTitle(markdown: string): string {
   const match = markdown.match(/^#\s+(.+)$/m);
-  if (match?.[1]) return match[1].trim();
+  if (match && match[1]) return match[1].trim();
   const firstLine = markdown.trim().split("\n")[0] ?? "";
   return stripMarkdown(firstLine).slice(0, 80) || "Untitled";
 }

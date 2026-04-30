@@ -18,8 +18,11 @@ export function useScrollTracker({
   onScroll,
 }: UseScrollTrackerOptions) {
   const onScrollRef = useRef(onScroll);
-  onScrollRef.current = onScroll;
   const lastKeyRef = useRef<string>("");
+
+  useEffect(() => {
+    onScrollRef.current = onScroll;
+  });
 
   useEffect(() => {
     if (!enabled) return;

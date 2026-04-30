@@ -23,11 +23,9 @@ export function AnnotatedDocumentView({ result }: Props) {
                   <p className="text-amber-300 italic">
                     {ann.cleanedTranscript}
                   </p>
-                  {ann.quotedText && (
-                    <blockquote className="text-gray-500 text-xs mt-1 pl-2 border-l border-gray-600">
+                  {ann.quotedText ? <blockquote className="text-gray-500 text-xs mt-1 pl-2 border-l border-gray-600">
                       {ann.quotedText}
-                    </blockquote>
-                  )}
+                    </blockquote> : null}
                 </div>
               ))}
             </div>
