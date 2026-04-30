@@ -1,32 +1,27 @@
+/**
+ * Render the live transcript with each spotted keyword shown as its
+ * canonical form. The literal text the user said still defines the span
+ * (so highlights and counts line up with what was actually heard) but
+ * the rendered text is the canonical phrase from the keyword definition,
+ * giving aliases like "begin edit" and "start edit" a single visual
+ * surface.
+ */
+
 import { useMemo } from "react";
-import type { KeywordMatch, KeywordLabel } from "../keywords.js";
+import type { ModeMatch } from "../modes/types.js";
 
 interface TranscriptViewProps {
   transcript: string;
-  matches: KeywordMatch[];
+  matches: ModeMatch[];
 }
-
-// Tailwind classnames for each keyword label. Kept inline so the
-// JIT compiler picks them up — Tailwind does not detect class names
-// constructed dynamically from non-literal strings.
-const LABEL_CLASSES: Record<KeywordLabel, string> = {
-  highlight: "bg-yellow-500/30 text-yellow-100 border-yellow-500/60",
-  bookmark: "bg-blue-500/30 text-blue-100 border-blue-500/60",
-  todo: "bg-green-500/30 text-green-100 border-green-500/60",
-  important: "bg-red-500/30 text-red-100 border-red-500/60",
-  next: "bg-purple-500/30 text-purple-100 border-purple-500/60",
-};
 
 interface Segment {
   key: string;
   text: string;
-  match: KeywordMatch | null;
+  match: ModeMatch | null;
 }
 
-function segmentTranscript(
-  transcript: string,
-  matches: KeywordMatch[],
-): Segment[] {
+function segmentTranscript(transcript: string, matches: ModeMatch[]): Segment[] {
   const segments: Segment[] = [];
   let cursor = 0;
   for (const [i, m] of matches.entries()) {
@@ -60,7 +55,7 @@ export function TranscriptView({ transcript, matches }: TranscriptViewProps) {
     [transcript, matches],
   );
 
-  if (!transcript) {
+  if (transcript.length === 0) {
     return (
       <p className="text-gray-500 italic">
         Press start and begin speaking. Detected keywords will be highlighted
@@ -70,18 +65,18 @@ export function TranscriptView({ transcript, matches }: TranscriptViewProps) {
   }
 
   return (
-    <p className="text-lg leading-relaxed text-gray-100 whitespace-pre-wrap">
+    <p className="text-base leading-relaxed text-gray-100 whitespace-pre-wrap">
       {segments.map((seg) =>
-        seg.match ? (
+        seg.match === null ? (
+          <span key={seg.key}>{seg.text}</span>
+        ) : (
           <mark
             key={seg.key}
-            className={`rounded px-1 border ${LABEL_CLASSES[seg.match.label]}`}
-            title={seg.match.label}
+            className={`rounded px-1 border ${seg.match.colorClasses.highlight}`}
+            title={`${seg.match.canonical} (heard: "${seg.text.trim()}")`}
           >
-            {seg.text}
+            {seg.match.canonical}
           </mark>
-        ) : (
-          <span key={seg.key}>{seg.text}</span>
         ),
       )}
     </p>

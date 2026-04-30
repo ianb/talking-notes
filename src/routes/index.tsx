@@ -106,8 +106,9 @@ function HomeScreen() {
           >
             <div className="font-semibold text-gray-100">Spotter</div>
             <p className="text-sm text-gray-400 mt-1">
-              Live transcription with keyword spotting — matched phrases are
-              highlighted as you speak.
+              Live transcription with switchable keyword modes. Notes mode
+              highlights phrases inline; edit mode composes a message you
+              can rewrite via "start edit … end edit".
             </p>
           </Link>
         </section>
