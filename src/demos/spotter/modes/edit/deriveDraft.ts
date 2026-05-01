@@ -42,6 +42,12 @@ export type PendingEdit =
       draftBefore: string;
     };
 
+export interface SentMessage {
+  /** Stable id keyed on the send match's char range. */
+  id: string;
+  content: string;
+}
+
 export interface DerivedDraftState {
   /** The final composed message, with any applied edits folded in. */
   draft: string;
@@ -53,6 +59,12 @@ export interface DerivedDraftState {
    * are not yet reflected in `draft`.
    */
   pendingEdit: PendingEdit | null;
+  /**
+   * Messages the user has sent in this session, in chronological order.
+   * Each entry is the draft content snapshot at the moment "send
+   * message" matched. Empty drafts are not recorded.
+   */
+  sentMessages: SentMessage[];
   /** Monotonic counters used by the view to fire transient animations. */
   counters: {
     sent: number;
@@ -82,6 +94,7 @@ export function deriveDraftState({
   let pendingEdit: PendingEdit | null = null;
   let frozen = false;
   const counters = { sent: 0, cleared: 0, cancelled: 0 };
+  const sentMessages: SentMessage[] = [];
 
   let cursor = modeStartIndex;
 
@@ -150,6 +163,7 @@ export function deriveDraftState({
     } else if (m.label === "send") {
       if (editing === null) {
         draft += plain;
+        recordSend(m, { draft, sentMessages });
         counters.sent += 1;
         draft = "";
       } else {
@@ -194,6 +208,7 @@ export function deriveDraftState({
     draft,
     editing: editing === null ? null : { instructions: editing.instructions },
     pendingEdit,
+    sentMessages,
     counters,
     frozen,
   };
@@ -225,4 +240,19 @@ function resolveCleanup(
     pendingEdit: { kind: "cleanup", key, draftBefore: draft },
     frozen: true,
   };
+}
+
+/**
+ * Append a snapshot of the current draft to `sentMessages` if it has
+ * any non-whitespace content. Pulled out of the main walker to keep
+ * `deriveDraftState` under the project's complexity limit; mutates the
+ * supplied list in place.
+ */
+function recordSend(
+  m: ModeMatch,
+  { draft, sentMessages }: { draft: string; sentMessages: SentMessage[] },
+): void {
+  const trimmed = draft.trim();
+  if (trimmed.length === 0) return;
+  sentMessages.push({ id: `send-${m.start}-${m.end}`, content: trimmed });
 }

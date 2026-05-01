@@ -27,6 +27,53 @@ t.test("plain dictation flows into the draft", (t) => {
   t.end();
 });
 
+t.test("send message records the draft into sentMessages", (t) => {
+  const transcript = "hello team send message";
+  const result = deriveDraftState({
+    transcript,
+    matches: matchesFor(transcript),
+    appliedEdits: new Map(),
+    modeStartIndex: 0,
+  });
+  t.equal(result.sentMessages.length, 1);
+  const first = result.sentMessages[0];
+  if (!first) {
+    t.fail("expected one sent message");
+    return t.end();
+  }
+  t.equal(first.content, "hello team");
+  t.equal(result.draft, "");
+  t.end();
+});
+
+t.test("multiple sent messages accumulate in order", (t) => {
+  const transcript = "first send message second send message";
+  const result = deriveDraftState({
+    transcript,
+    matches: matchesFor(transcript),
+    appliedEdits: new Map(),
+    modeStartIndex: 0,
+  });
+  t.equal(result.sentMessages.length, 2);
+  t.equal(result.sentMessages[0]?.content, "first");
+  t.equal(result.sentMessages[1]?.content, "second");
+  t.end();
+});
+
+t.test("send with empty draft is not recorded", (t) => {
+  const transcript = "send message";
+  const result = deriveDraftState({
+    transcript,
+    matches: matchesFor(transcript),
+    appliedEdits: new Map(),
+    modeStartIndex: 0,
+  });
+  t.equal(result.sentMessages.length, 0);
+  // Counter still ticks (the badge animation fires either way).
+  t.equal(result.counters.sent, 1);
+  t.end();
+});
+
 t.test("send message clears the draft and increments the counter", (t) => {
   const transcript = "hello there send message";
   const result = deriveDraftState({

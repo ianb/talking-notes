@@ -162,8 +162,33 @@ export function EditView({
             {errorToShow}
           </div>
         )}
+
+        <SentMessagesList sentMessages={derived.sentMessages} />
       </div>
     </div>
+  );
+}
+
+interface SentMessagesListProps {
+  sentMessages: readonly { id: string; content: string }[];
+}
+
+function SentMessagesList({ sentMessages }: SentMessagesListProps) {
+  if (sentMessages.length === 0) return null;
+  return (
+    <ul className="space-y-3">
+      {sentMessages.map((m) => (
+        <li
+          key={m.id}
+          className="rounded-lg border border-emerald-700/40 bg-emerald-950/30 p-4"
+        >
+          <div className="text-xs uppercase tracking-wider text-emerald-400 mb-1">
+            Sent message
+          </div>
+          <p className="text-gray-100 whitespace-pre-wrap">{m.content}</p>
+        </li>
+      ))}
+    </ul>
   );
 }
 
