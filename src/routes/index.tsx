@@ -106,20 +106,10 @@ function HomeScreen() {
           >
             <div className="font-semibold text-gray-100">Spotter</div>
             <p className="text-sm text-gray-400 mt-1">
-              Live transcription with switchable keyword modes. Notes mode
-              highlights phrases inline; edit mode composes a message you
-              can rewrite via "start edit … end edit".
-            </p>
-          </Link>
-          <Link
-            to="/language-learning"
-            className="block rounded-lg border border-gray-700 hover:border-blue-500 bg-gray-900/40 px-5 py-4 transition-colors"
-          >
-            <div className="font-semibold text-gray-100">Language Learning</div>
-            <p className="text-sm text-gray-400 mt-1">
-              Speak in Spanish, then bracket an English question with
-              "question … send". The LLM extracts the question and answers
-              it inline.
+              Live transcription with switchable keyword modes — notes,
+              edit (LLM-driven message rewrites), and language learning
+              (Spanish dictation with bracketed English questions and
+              critiques).
             </p>
           </Link>
         </section>
