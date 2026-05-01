@@ -14,11 +14,15 @@
  * provider-specific through a strategy implementing this interface.
  */
 
-export type TranscriptionEventKind = "delta" | "done" | "error";
+export type TranscriptionEventKind = "delta" | "interim" | "done" | "error";
 
 export interface TranscriptionEvent {
   kind: TranscriptionEventKind;
-  /** Filled for `delta` events — the new text to append to the transcript. */
+  /**
+   * Filled for `delta` events (text to append to the committed transcript)
+   * and `interim` events (the current best-guess of the live utterance,
+   * which replaces the previous interim and is dropped on the next delta).
+   */
   text: string | null;
   /** Filled for `error` events — a short, user-facing message. */
   message: string | null;

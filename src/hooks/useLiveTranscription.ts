@@ -32,6 +32,14 @@ interface UseLiveTranscriptionOptions {
   apiKey: string;
   enabled: boolean;
   onDelta: (delta: string) => void;
+  /**
+   * Called for partial / live transcriptions when the active provider
+   * supports them (Deepgram does, Voxtral does not). The argument is
+   * the current best-guess text for the live utterance and should
+   * *replace* any previously-shown interim text — it is not a delta
+   * to append. The next `onDelta` call implicitly supersedes it.
+   */
+  onInterim?: (text: string) => void;
   onDone: (text?: string) => void;
 }
 
@@ -48,6 +56,7 @@ export function useLiveTranscription({
   apiKey,
   enabled,
   onDelta,
+  onInterim,
   onDone,
 }: UseLiveTranscriptionOptions) {
   const { provider } = useApiKeys();
@@ -58,9 +67,11 @@ export function useLiveTranscription({
   // every render. Refs are written from inside an effect so they aren't
   // mutated during render.
   const onDeltaRef = useRef(onDelta);
+  const onInterimRef = useRef(onInterim);
   const onDoneRef = useRef(onDone);
   useEffect(() => {
     onDeltaRef.current = onDelta;
+    onInterimRef.current = onInterim;
     onDoneRef.current = onDone;
   });
 
@@ -149,6 +160,9 @@ export function useLiveTranscription({
           if (evt === null) return;
           if (evt.kind === "delta" && evt.text !== null) {
             onDeltaRef.current(evt.text);
+          } else if (evt.kind === "interim" && evt.text !== null) {
+            const fn = onInterimRef.current;
+            if (fn) fn(evt.text);
           } else if (evt.kind === "done") {
             onDoneRef.current(evt.text === null ? undefined : evt.text);
           } else if (evt.kind === "error") {

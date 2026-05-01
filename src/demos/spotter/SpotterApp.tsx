@@ -53,10 +53,16 @@ export function SpotterApp() {
   const { transcriptionKey, provider } = useApiKeys();
   const [recording, setRecording] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const [interim, setInterim] = useState("");
   const [manualSwitch, setManualSwitch] = useState<ManualSwitch | null>(null);
 
   const onDelta = useCallback((delta: string) => {
     setTranscript((current) => current + delta);
+    // The just-finalized text supersedes whatever was being interim'd.
+    setInterim("");
+  }, []);
+  const onInterim = useCallback((text: string) => {
+    setInterim(text);
   }, []);
   const onDone = useCallback(() => {}, []);
 
@@ -65,6 +71,7 @@ export function SpotterApp() {
     apiKey,
     enabled: recording && transcriptionKey !== null,
     onDelta,
+    onInterim,
     onDone,
   });
 
@@ -115,23 +122,40 @@ export function SpotterApp() {
     [transcript, safeMode.id, safeMode.keywords],
   );
 
+  // Decorative match set for the interim text — same patterns, but the
+  // results are display-only. Mode views, mode-switching, and edit-mode
+  // dispatch all read `matches` (the committed set), so a keyword that
+  // appears in `interim` does not trigger any action until the next
+  // delta finalizes it.
+  const interimMatches = useMemo(() => {
+    if (interim.length === 0) return [];
+    return findMatches(interim, {
+      modeKeywords: safeMode.keywords,
+      modeId: safeMode.id,
+      switchKeywords: SWITCH_KEYWORDS,
+    });
+  }, [interim, safeMode.id, safeMode.keywords]);
+
   const transcriptRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const el = transcriptRef.current;
     if (el === null) return;
     el.scrollTop = el.scrollHeight;
-  }, [transcript]);
+  }, [transcript, interim]);
 
   function handleStart() {
     setTranscript("");
+    setInterim("");
     setManualSwitch(null);
     setRecording(true);
   }
   function handleStop() {
     setRecording(false);
+    setInterim("");
   }
   function handleClear() {
     setTranscript("");
+    setInterim("");
     setManualSwitch(null);
   }
   function handleSelectMode(modeId: string) {
@@ -160,7 +184,12 @@ export function SpotterApp() {
           ref={transcriptRef}
           className="h-[26vh] min-h-[180px] border-b border-gray-800 overflow-y-auto px-6 py-4 bg-gray-950"
         >
-          <TranscriptView transcript={transcript} matches={matches} />
+          <TranscriptView
+            transcript={transcript}
+            matches={matches}
+            interim={interim}
+            interimMatches={interimMatches}
+          />
         </div>
 
         <div className="flex flex-1 min-h-0">

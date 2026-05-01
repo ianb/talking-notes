@@ -5,17 +5,16 @@
  * `sample_rate=16000`. We send each chunk as a raw binary WebSocket
  * frame.
  *
- * We disable interim results because the rest of the app expects a
- * delta-stream with no rewinds. With `interim_results=true` Deepgram
- * sends progressively-revised transcripts that don't fit our append-
- * only model. With it off we get one final per utterance — the
- * transcript appears in punctuated chunks rather than word by word,
- * but the chunks never need to be undone.
+ * We turn `interim_results=true` on so the UI can show speech as it's
+ * being recognized. Two distinct event kinds come back from
+ * `parseMessage`:
  *
- * Query params are kept intentionally minimal. Deepgram returns HTTP
- * 400 for unfamiliar combinations (e.g. `utterance_end_ms` requires
- * `interim_results=true`), so the safer default is to start small and
- * add params back only when we have a verified need.
+ *  - `delta` — fired when `is_final` is true. The text is committed
+ *    and the consumer should append it to the persistent transcript.
+ *  - `interim` — fired for every non-final result. The text is the
+ *    current best guess of the live utterance and *replaces* whatever
+ *    was previously interim (it is not a delta to append). The next
+ *    `delta` event implicitly clears it.
  */
 
 import type {
@@ -56,6 +55,11 @@ export const deepgramProvider: TranscriptionProviderStrategy = {
     sample_rate: String(SAMPLE_RATE),
     smart_format: "true",
     punctuate: "true",
+    interim_results: "true",
+    // Bump the silence threshold so single-thought utterances stay
+    // together. `utterance_end_ms` is only honored when interim results
+    // are on, which is why it lives here.
+    utterance_end_ms: "1500",
   }),
   sendAudio(ws, samples) {
     ws.send(samples);
@@ -73,11 +77,14 @@ export const deepgramProvider: TranscriptionProviderStrategy = {
       const text = msg.message ?? msg.description ?? "Deepgram error";
       return { kind: "error", text: null, message: text };
     }
-    if (msg.type === "Results" && msg.is_final === true) {
+    if (msg.type === "Results") {
       const transcript = extractTranscript(msg).trim();
       if (transcript.length === 0) return null;
-      // Add a trailing space so successive utterances don't run together.
-      return { kind: "delta", text: `${transcript} `, message: null };
+      if (msg.is_final === true) {
+        // Add a trailing space so successive utterances don't run together.
+        return { kind: "delta", text: `${transcript} `, message: null };
+      }
+      return { kind: "interim", text: transcript, message: null };
     }
     if (msg.type === "UtteranceEnd") {
       return { kind: "done", text: null, message: null };
