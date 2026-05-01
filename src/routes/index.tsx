@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useApiKeys } from "../apiKeys.js";
+import {
+  useApiKeys,
+  type TranscriptionProvider,
+} from "../apiKeys.js";
 
 export const Route = createFileRoute("/")({
   component: HomeScreen,
@@ -40,10 +43,51 @@ function KeyField({
   );
 }
 
+interface ProviderTabProps {
+  label: string;
+  active: boolean;
+  hasKey: boolean;
+  onClick: () => void;
+}
+
+function ProviderTab({ label, active, hasKey, onClick }: ProviderTabProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+        active
+          ? "bg-blue-600 border-blue-500 text-white"
+          : "bg-gray-900 border-gray-700 text-gray-300 hover:bg-gray-800"
+      }`}
+    >
+      {label}
+      {hasKey ? null : (
+        <span
+          className={`ml-2 text-xs ${
+            active ? "text-amber-200" : "text-amber-400"
+          }`}
+        >
+          (no key)
+        </span>
+      )}
+    </button>
+  );
+}
+
 function HomeScreen() {
-  const { openai, mistral, setOpenai, setMistral } = useApiKeys();
+  const {
+    openai,
+    mistral,
+    deepgram,
+    provider,
+    setOpenai,
+    setMistral,
+    setDeepgram,
+    setProvider,
+  } = useApiKeys();
   const [openaiInput, setOpenaiInput] = useState(openai ?? "");
   const [mistralInput, setMistralInput] = useState(mistral ?? "");
+  const [deepgramInput, setDeepgramInput] = useState(deepgram ?? "");
 
   function handleSaveOpenai() {
     if (openaiInput.trim() && openaiInput !== openai)
@@ -52,6 +96,13 @@ function HomeScreen() {
   function handleSaveMistral() {
     if (mistralInput.trim() && mistralInput !== mistral)
       setMistral(mistralInput.trim());
+  }
+  function handleSaveDeepgram() {
+    if (deepgramInput.trim() && deepgramInput !== deepgram)
+      setDeepgram(deepgramInput.trim());
+  }
+  function handleSelectProvider(p: TranscriptionProvider) {
+    setProvider(p);
   }
 
   return (
@@ -63,6 +114,30 @@ function HomeScreen() {
             Configure API keys, then choose an experience.
           </p>
         </header>
+
+        <section className="space-y-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+            Transcription provider
+          </h2>
+          <div className="flex gap-2">
+            <ProviderTab
+              label="Voxtral"
+              active={provider === "voxtral"}
+              hasKey={mistral !== null && mistral.length > 0}
+              onClick={() => handleSelectProvider("voxtral")}
+            />
+            <ProviderTab
+              label="Deepgram"
+              active={provider === "deepgram"}
+              hasKey={deepgram !== null && deepgram.length > 0}
+              onClick={() => handleSelectProvider("deepgram")}
+            />
+          </div>
+          <p className="text-xs text-gray-500">
+            Switch providers if one isn't working well. Each demo uses the
+            currently-selected one.
+          </p>
+        </section>
 
         <section className="space-y-4">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
@@ -78,11 +153,19 @@ function HomeScreen() {
           />
           <KeyField
             label="Mistral API Key"
-            hint="(live transcription)"
+            hint="(Voxtral transcription)"
             value={mistralInput}
             placeholder="..."
             onChange={setMistralInput}
             onBlur={handleSaveMistral}
+          />
+          <KeyField
+            label="Deepgram API Key"
+            hint="(Deepgram transcription)"
+            value={deepgramInput}
+            placeholder="..."
+            onChange={setDeepgramInput}
+            onBlur={handleSaveDeepgram}
           />
         </section>
 

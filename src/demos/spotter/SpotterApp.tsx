@@ -50,7 +50,7 @@ function findLatestVoiceSwitch(matches: ModeMatch[]): ModeMatch | null {
 }
 
 export function SpotterApp() {
-  const { mistral } = useApiKeys();
+  const { transcriptionKey, provider } = useApiKeys();
   const [recording, setRecording] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [manualSwitch, setManualSwitch] = useState<ManualSwitch | null>(null);
@@ -60,10 +60,10 @@ export function SpotterApp() {
   }, []);
   const onDone = useCallback(() => {}, []);
 
-  const apiKey = mistral === null ? "" : mistral;
+  const apiKey = transcriptionKey === null ? "" : transcriptionKey;
   const { status, error } = useLiveTranscription({
     apiKey,
-    enabled: recording && mistral !== null,
+    enabled: recording && transcriptionKey !== null,
     onDelta,
     onDone,
   });
@@ -139,7 +139,7 @@ export function SpotterApp() {
     setManualSwitch({ id: modeId, atIdx: transcript.length });
   }
 
-  if (mistral === null) return <NeedsKey />;
+  if (transcriptionKey === null) return <NeedsKey provider={provider} />;
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col">
@@ -289,20 +289,22 @@ function Header({
   );
 }
 
-function NeedsKey() {
+function NeedsKey({ provider }: { provider: "voxtral" | "deepgram" }) {
+  const providerLabel = provider === "voxtral" ? "Mistral (Voxtral)" : "Deepgram";
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center p-8">
       <div className="max-w-md text-center space-y-4">
         <h1 className="text-2xl font-bold">Spotter</h1>
         <p className="text-gray-400">
-          This demo needs a Mistral API key for live transcription, plus an
-          OpenAI key if you want to use edit mode.
+          This demo needs a {providerLabel} API key for live transcription
+          (you can switch providers on the home screen), plus an OpenAI key
+          for edit and language-learning modes.
         </p>
         <Link
           to="/"
           className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium"
         >
-          Set API key
+          Set API keys
         </Link>
       </div>
     </div>

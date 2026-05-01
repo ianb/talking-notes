@@ -7,13 +7,13 @@ import { fetchMarkdownFromUrl } from "../api/jinaReader.js";
 
 export function SetupScreen() {
   const { dispatch } = useReadingState();
-  const { openai, mistral } = useApiKeys();
+  const { openai, transcriptionKey } = useApiKeys();
   const [markdownInput, setMarkdownInput] = useState("");
   const [urlInput, setUrlInput] = useState("");
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const keysReady = !!openai && !!mistral;
+  const keysReady = !!openai && transcriptionKey !== null;
   const canStart = keysReady && markdownInput.trim().length > 0;
 
   async function handleFetchUrl() {

@@ -1,19 +1,26 @@
 /**
- * Streams microphone audio to Mistral Voxtral realtime via the dev-server
- * WebSocket proxy, and surfaces transcript delta / done events.
+ * Streams microphone audio to a live-transcription provider via the
+ * dev-server WebSocket proxy and surfaces transcript delta / done /
+ * error events.
  *
- * Resources (MediaStream, AudioContext, Worklet, WebSocket) are created
- * when `enabled` becomes true and torn down when it becomes false.
+ * Provider-specific concerns (URL, audio framing, message parsing)
+ * live in `src/audio/providers/`. The hook owns the parts that don't
+ * vary: AudioContext + worklet lifecycle, the WS connection state
+ * machine, and the resource cleanup contract on `enabled` toggling.
  *
- * The hook itself is timing-agnostic: each delta callback receives just
- * the delta string. Consumers that care about wall-clock or relative time
- * should call `Date.now()` (or subtract their own start time) at the
- * call site — the transcription pipeline is not the right authority on
- * "when did the user start reading/recording/etc."
+ * The hook itself is timing-agnostic — each delta callback receives
+ * just the delta string. Consumers that care about wall-clock or
+ * relative time should call `Date.now()` (or subtract their own
+ * start time) at the call site.
  */
 
 import { useEffect, useRef, useState } from "react";
 import pcmProcessorUrl from "../audio/pcm-processor.worklet.js?url";
+import {
+  getProviderStrategy,
+  type TranscriptionProviderStrategy,
+} from "../audio/providers/index.js";
+import { useApiKeys } from "../apiKeys.js";
 
 export type LiveTranscriptionStatus =
   | "idle"
@@ -28,13 +35,13 @@ interface UseLiveTranscriptionOptions {
   onDone: (text?: string) => void;
 }
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCodePoint(byte);
-  }
-  return btoa(binary);
+function buildWsUrl(
+  strategy: TranscriptionProviderStrategy,
+  apiKey: string,
+): string {
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const params = new URLSearchParams({ key: apiKey, ...strategy.proxyQuery() });
+  return `${protocol}//${window.location.host}${strategy.proxyPath}?${params.toString()}`;
 }
 
 export function useLiveTranscription({
@@ -43,12 +50,13 @@ export function useLiveTranscription({
   onDelta,
   onDone,
 }: UseLiveTranscriptionOptions) {
+  const { provider } = useApiKeys();
   const [status, setStatus] = useState<LiveTranscriptionStatus>("idle");
   const [error, setError] = useState<string | null>(null);
 
-  // Keep callbacks in refs so the main effect doesn't tear down on every
-  // render. Refs are updated inside an effect so they aren't written during
-  // render.
+  // Keep callbacks in refs so the main effect doesn't tear down on
+  // every render. Refs are written from inside an effect so they aren't
+  // mutated during render.
   const onDeltaRef = useRef(onDelta);
   const onDoneRef = useRef(onDone);
   useEffect(() => {
@@ -59,6 +67,7 @@ export function useLiveTranscription({
   useEffect(() => {
     if (!enabled) return;
 
+    const strategy = getProviderStrategy(provider);
     let disposed = false;
     let errored = false;
     let ws: WebSocket | null = null;
@@ -81,6 +90,13 @@ export function useLiveTranscription({
         audioContext = null;
       }
       if (ws) {
+        if (
+          (ws.readyState === WebSocket.OPEN ||
+            ws.readyState === WebSocket.CONNECTING) &&
+          strategy.beforeClose
+        ) {
+          strategy.beforeClose(ws);
+        }
         if (
           ws.readyState === WebSocket.OPEN ||
           ws.readyState === WebSocket.CONNECTING
@@ -109,10 +125,9 @@ export function useLiveTranscription({
         workletNode = new AudioWorkletNode(audioContext, "pcm-processor");
         source.connect(workletNode);
 
-        const protocol =
-          window.location.protocol === "https:" ? "wss:" : "ws:";
-        const wsUrl = `${protocol}//${window.location.host}/transcribe-ws?key=${encodeURIComponent(apiKey)}`;
-        ws = new WebSocket(wsUrl);
+        ws = new WebSocket(buildWsUrl(strategy, apiKey));
+        // Important for Deepgram: send raw binary, not blobs.
+        ws.binaryType = "arraybuffer";
 
         ws.onopen = () => {
           if (!disposed) setStatus("recording");
@@ -120,30 +135,25 @@ export function useLiveTranscription({
 
         ws.onmessage = (event) => {
           if (disposed) return;
-          let msg: { type?: string; delta?: string; text?: string; error?: unknown };
-          try {
-            msg = JSON.parse(event.data);
-          } catch (_e) {
-            return;
-          }
-
-          if (msg.type === "transcription.text.delta") {
-            const delta = msg.delta ?? msg.text ?? "";
-            if (delta) {
-              onDeltaRef.current(delta);
-            }
-          } else if (msg.type === "transcription.done") {
-            onDoneRef.current(msg.text);
-          } else if (msg.type === "error") {
-            let errMsg: string;
-            if (typeof msg.error === "object" && msg.error !== null) {
-              const objErr = msg.error as { message?: string };
-              errMsg = objErr.message ?? JSON.stringify(msg.error);
-            } else {
-              errMsg = String(msg.error ?? "Transcription error");
-            }
+          const raw =
+            typeof event.data === "string"
+              ? event.data
+              : (() => {
+                  try {
+                    return new TextDecoder().decode(event.data as ArrayBuffer);
+                  } catch (_e) {
+                    return "";
+                  }
+                })();
+          const evt = strategy.parseMessage(raw);
+          if (evt === null) return;
+          if (evt.kind === "delta" && evt.text !== null) {
+            onDeltaRef.current(evt.text);
+          } else if (evt.kind === "done") {
+            onDoneRef.current(evt.text === null ? undefined : evt.text);
+          } else if (evt.kind === "error") {
             errored = true;
-            setError(errMsg);
+            setError(evt.message ?? "Transcription error");
             setStatus("error");
           }
         };
@@ -151,7 +161,7 @@ export function useLiveTranscription({
         ws.onerror = () => {
           if (!disposed) {
             errored = true;
-            setError("WebSocket error");
+            setError(`${strategy.displayName} WebSocket error`);
             setStatus("error");
           }
         };
@@ -168,13 +178,7 @@ export function useLiveTranscription({
             ws &&
             ws.readyState === WebSocket.OPEN
           ) {
-            const base64Audio = arrayBufferToBase64(event.data.samples);
-            ws.send(
-              JSON.stringify({
-                type: "input_audio.append",
-                audio: base64Audio,
-              }),
-            );
+            strategy.sendAudio(ws, event.data.samples as ArrayBuffer);
           }
         };
       } catch (err) {
@@ -187,8 +191,7 @@ export function useLiveTranscription({
     })();
 
     return cleanup;
-
-  }, [enabled, apiKey]);
+  }, [enabled, apiKey, provider]);
 
   return { status, error };
 }

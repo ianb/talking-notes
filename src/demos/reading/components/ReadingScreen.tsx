@@ -11,7 +11,7 @@ import { SelectionAddButton } from "./SelectionAddButton.js";
 
 export function ReadingScreen() {
   const { state, dispatch } = useReadingState();
-  const { mistral } = useApiKeys();
+  const { transcriptionKey } = useApiKeys();
 
   // The shared transcription hook is timing-agnostic; we stamp deltas with
   // a reading-relative time here, where readingStartTime lives.
@@ -39,8 +39,8 @@ export function ReadingScreen() {
 
   const { status: transcriptionStatus, error: transcriptionError } =
     useLiveTranscription({
-      apiKey: mistral!,
-      enabled: state.phase === "reading",
+      apiKey: transcriptionKey === null ? "" : transcriptionKey,
+      enabled: state.phase === "reading" && transcriptionKey !== null,
       onDelta,
       onDone,
     });
