@@ -20,12 +20,27 @@
 
 import type { ModeMatch } from "../types.js";
 
-export interface PendingEdit {
-  /** Stable cache key — also used by the caller to dedupe LLM calls. */
-  key: string;
-  draftBefore: string;
-  instructions: string;
-}
+/**
+ * `kind: "edit"` — user said `start edit … end edit` and the captured
+ * instructions describe the change to apply.
+ *
+ * `kind: "cleanup"` — user said `clean up text`; no user-supplied
+ * instructions, the dispatch hook applies a hardcoded
+ * voice-transcript-cleanup prompt to the current draft.
+ */
+export type PendingEdit =
+  | {
+      kind: "edit";
+      /** Stable cache key — also used by the caller to dedupe LLM calls. */
+      key: string;
+      draftBefore: string;
+      instructions: string;
+    }
+  | {
+      kind: "cleanup";
+      key: string;
+      draftBefore: string;
+    };
 
 export interface DerivedDraftState {
   /** The final composed message, with any applied edits folded in. */
@@ -106,6 +121,7 @@ export function deriveDraftState({
           editing = null;
         } else {
           pendingEdit = {
+            kind: "edit",
             key,
             draftBefore: draft,
             instructions: editing.instructions.trim(),
@@ -114,6 +130,16 @@ export function deriveDraftState({
         }
       } else {
         draft += plain;
+      }
+    } else if (m.label === "clean-up-text") {
+      if (editing === null) {
+        draft += plain;
+        const cleanup = resolveCleanup(m, { draft, appliedEdits });
+        draft = cleanup.draft;
+        pendingEdit = cleanup.pendingEdit;
+        frozen = cleanup.frozen;
+      } else {
+        editing.instructions += plain;
       }
     } else if (m.label === "cancel-edit") {
       if (editing !== null) {
@@ -170,5 +196,33 @@ export function deriveDraftState({
     pendingEdit,
     counters,
     frozen,
+  };
+}
+
+interface CleanupResolution {
+  draft: string;
+  pendingEdit: PendingEdit | null;
+  frozen: boolean;
+}
+
+/**
+ * For a `clean up text` match: either return the cached cleaned draft
+ * (turning the call into a no-op), or surface a cleanup pending edit
+ * so the dispatch hook fires the LLM. Pulled out of `deriveDraftState`
+ * to keep that function under the project's complexity limit.
+ */
+function resolveCleanup(
+  m: ModeMatch,
+  { draft, appliedEdits }: { draft: string; appliedEdits: Map<string, string> },
+): CleanupResolution {
+  const key = `cleanup-${m.start}-${m.end}`;
+  const applied = appliedEdits.get(key);
+  if (applied !== undefined) {
+    return { draft: applied, pendingEdit: null, frozen: false };
+  }
+  return {
+    draft,
+    pendingEdit: { kind: "cleanup", key, draftBefore: draft },
+    frozen: true,
   };
 }

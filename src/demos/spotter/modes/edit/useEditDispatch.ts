@@ -18,7 +18,30 @@
 
 import { useEffect, useRef, type Dispatch, type SetStateAction } from "react";
 import { applyLlmEdit, describeLlmEditError } from "./llmEdit.js";
+import { cleanupTranscript } from "./llmCleanup.js";
 import type { PendingEdit } from "./deriveDraft.js";
+
+interface DispatchArgs {
+  block: PendingEdit;
+  apiKey: string;
+  signal: AbortSignal;
+}
+
+function dispatchPending({
+  block,
+  apiKey,
+  signal,
+}: DispatchArgs): Promise<string> {
+  if (block.kind === "cleanup") {
+    return cleanupTranscript({ apiKey, draft: block.draftBefore, signal });
+  }
+  return applyLlmEdit({
+    apiKey,
+    draft: block.draftBefore,
+    instructions: block.instructions,
+    signal,
+  });
+}
 
 interface UseEditDispatchArgs {
   pendingKey: string | null;
@@ -64,12 +87,7 @@ export function useEditDispatch({
     const apiKey = openai === null ? "" : openai;
     const controller = new AbortController();
     inflightRef.current = { key: pendingKey, controller };
-    applyLlmEdit({
-      apiKey,
-      draft: block.draftBefore,
-      instructions: block.instructions,
-      signal: controller.signal,
-    })
+    dispatchPending({ block, apiKey, signal: controller.signal })
       .then((result) => {
         clearInflight(inflightRef, controller);
         setAppliedEdits((prev) => {

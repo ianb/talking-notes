@@ -48,6 +48,11 @@ const COLORS_CANCEL_EDIT = {
   dot: "bg-zinc-400",
 } as const;
 
+const COLORS_CLEANUP = {
+  highlight: "bg-teal-500/30 text-teal-100 border-teal-500/60",
+  dot: "bg-teal-400",
+} as const;
+
 export const EDIT_KEYWORDS: readonly KeywordDef[] = [
   {
     label: "send",
@@ -118,5 +123,17 @@ export const EDIT_KEYWORDS: readonly KeywordDef[] = [
       nevermind edit
     `),
     colorClasses: COLORS_CANCEL_EDIT,
+  },
+  {
+    label: "clean-up-text",
+    canonical: "clean up text",
+    description:
+      "Fix transcription artifacts (homophones, punctuation) without rewriting the words.",
+    pattern: KeywordPattern.compile(`
+      clean up text
+      clean up the text
+      clean up the message
+    `),
+    colorClasses: COLORS_CLEANUP,
   },
 ];
