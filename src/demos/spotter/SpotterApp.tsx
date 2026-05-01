@@ -4,18 +4,23 @@
  * be switched two ways:
  *
  *  - By voice: any `enter <mode-name>` / `switch to <mode-name>`
- *    keyword in the transcript flips the active mode. The phrase's
- *    `match.end` becomes the new mode's start index, so the new mode
- *    only sees text spoken after the switch.
- *  - By UI: clicking a mode button. The current `transcript.length` is
- *    captured as the new mode's start index — anything spoken before
- *    the click stays anchored to the previous mode.
+ *    keyword in the transcript flips the active mode. A watermark ref
+ *    tracks the latest switch we've already honored so we don't re-fire
+ *    on unrelated transcript updates.
+ *  - By UI: clicking a mode button.
  *
- * Active mode is *derived*, not synced via effect: voice and manual
- * switches are both reduced to a "switch happened at transcript char
- * index N" signal, and whichever has the larger N wins. That keeps the
- * mode in lockstep with the transcript without us having to juggle
- * setState-in-effect cascades.
+ * State-transition rules — explicitly chosen, easy to get wrong:
+ *
+ *  - Mode change (either trigger) clears the transcript, so each mode
+ *    session starts fresh. Switching to the mode you're already in is
+ *    a no-op.
+ *  - Start clears the transcript and turns on the mic, but **does not
+ *    change the mode** — the user picks the mode and that sticks across
+ *    Start/Stop cycles.
+ *  - Stop turns off the mic and clears any in-flight interim text. It
+ *    leaves the committed transcript and the active mode alone.
+ *  - Clear empties the transcript and that's all — no mic change, no
+ *    mode change.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -33,12 +38,13 @@ const SWITCH_KEYWORDS = buildSwitchKeywords(MODES);
 
 interface ActiveMode {
   id: string;
+  /**
+   * Char index into `transcript` where this mode's session started.
+   * After we adopted clear-on-switch this is always 0 in practice, but
+   * the field stays in `ModeViewProps` so mode views don't have to be
+   * touched whenever the transition policy moves.
+   */
   startIndex: number;
-}
-
-interface ManualSwitch {
-  id: string;
-  atIdx: number;
 }
 
 function findLatestVoiceSwitch(matches: ModeMatch[]): ModeMatch | null {
@@ -54,7 +60,10 @@ export function SpotterApp() {
   const [recording, setRecording] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [interim, setInterim] = useState("");
-  const [manualSwitch, setManualSwitch] = useState<ManualSwitch | null>(null);
+  const [activeMode, setActiveMode] = useState<ActiveMode>({
+    id: DEFAULT_MODE_ID,
+    startIndex: 0,
+  });
 
   const onDelta = useCallback((delta: string) => {
     setTranscript((current) => current + delta);
@@ -75,9 +84,10 @@ export function SpotterApp() {
     onDone,
   });
 
-  // Pass 1: scan the transcript with only the meta switch patterns. We
-  // need this to know which mode is active before we can scan for that
-  // mode's own keywords.
+  // Pass 1: scan the transcript with only the meta switch patterns so
+  // we can react to voice-triggered mode switches. We honor each match
+  // at most once via `lastHonoredSwitchEndRef`; the watermark resets
+  // whenever the transcript is empty (a fresh session can re-fire).
   const switchMatches = useMemo(
     () =>
       findMatches(transcript, {
@@ -88,21 +98,35 @@ export function SpotterApp() {
     [transcript],
   );
 
-  const activeMode = useMemo<ActiveMode>(() => {
-    const voice = findLatestVoiceSwitch(switchMatches);
-    const voiceIdx = voice === null ? -1 : voice.end;
-    const manualIdx = manualSwitch === null ? -1 : manualSwitch.atIdx;
-    // Tie-breaker: prefer manual on equal index — clicks happen between
-    // transcript deltas, so a tie means the click landed exactly when a
-    // voice match had just ended; honoring the click feels right.
-    if (manualSwitch !== null && manualIdx >= voiceIdx) {
-      return { id: manualSwitch.id, startIndex: manualIdx };
-    }
-    if (voice !== null && voice.targetModeId !== null) {
-      return { id: voice.targetModeId, startIndex: voice.end };
-    }
-    return { id: DEFAULT_MODE_ID, startIndex: 0 };
-  }, [switchMatches, manualSwitch]);
+  const lastHonoredSwitchEndRef = useRef(-1);
+  useEffect(() => {
+    if (transcript.length === 0) lastHonoredSwitchEndRef.current = -1;
+  }, [transcript]);
+
+  // Apply mode transitions through a single helper so manual clicks
+  // and voice triggers share the same behavior (and the same setState
+  // batch).
+  const applyModeChange = useCallback((targetId: string) => {
+    setActiveMode({ id: targetId, startIndex: 0 });
+    setTranscript("");
+    setInterim("");
+  }, []);
+
+  // Honor voice mode-switches as they appear in the transcript. This
+  // effect synchronizes app state with an external signal (the
+  // transcription stream) — exactly the case the React docs cite for
+  // setState-in-effect. The watermark guards against re-fires, and
+  // applyModeChange itself is idempotent.
+  useEffect(() => {
+    const latest = findLatestVoiceSwitch(switchMatches);
+    if (latest === null) return;
+    if (latest.targetModeId === null) return;
+    if (latest.end <= lastHonoredSwitchEndRef.current) return;
+    lastHonoredSwitchEndRef.current = latest.end;
+    if (latest.targetModeId === activeMode.id) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    applyModeChange(latest.targetModeId);
+  }, [switchMatches, activeMode.id, applyModeChange]);
 
   const safeMode = useMemo(() => {
     const found = findMode(activeMode.id);
@@ -146,7 +170,6 @@ export function SpotterApp() {
   function handleStart() {
     setTranscript("");
     setInterim("");
-    setManualSwitch(null);
     setRecording(true);
   }
   function handleStop() {
@@ -156,11 +179,10 @@ export function SpotterApp() {
   function handleClear() {
     setTranscript("");
     setInterim("");
-    setManualSwitch(null);
   }
   function handleSelectMode(modeId: string) {
     if (modeId === activeMode.id) return;
-    setManualSwitch({ id: modeId, atIdx: transcript.length });
+    applyModeChange(modeId);
   }
 
   if (transcriptionKey === null) return <NeedsKey provider={provider} />;

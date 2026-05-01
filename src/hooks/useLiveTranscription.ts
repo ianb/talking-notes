@@ -116,6 +116,14 @@ export function useLiveTranscription({
         }
         ws = null;
       }
+      // Reset visible status when the user stopped a healthy session.
+      // Errors stick around so the user can see what went wrong; they
+      // get cleared on the next Start (where the effect body runs
+      // setStatus("connecting") + setError(null)).
+      if (!errored) {
+        setStatus("idle");
+        setError(null);
+      }
     }
 
     (async () => {
