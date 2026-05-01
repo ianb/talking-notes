@@ -111,6 +111,17 @@ function HomeScreen() {
               can rewrite via "start edit … end edit".
             </p>
           </Link>
+          <Link
+            to="/language-learning"
+            className="block rounded-lg border border-gray-700 hover:border-blue-500 bg-gray-900/40 px-5 py-4 transition-colors"
+          >
+            <div className="font-semibold text-gray-100">Language Learning</div>
+            <p className="text-sm text-gray-400 mt-1">
+              Speak in Spanish, then bracket an English question with
+              "question … send". The LLM extracts the question and answers
+              it inline.
+            </p>
+          </Link>
         </section>
       </div>
     </div>

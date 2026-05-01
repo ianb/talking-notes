@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SpotterRouteImport } from './routes/spotter'
 import { Route as ReadingRouteImport } from './routes/reading'
+import { Route as LanguageLearningRouteImport } from './routes/language-learning'
 import { Route as IndexRouteImport } from './routes/index'
 
 const SpotterRoute = SpotterRouteImport.update({
@@ -23,6 +24,11 @@ const ReadingRoute = ReadingRouteImport.update({
   path: '/reading',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LanguageLearningRoute = LanguageLearningRouteImport.update({
+  id: '/language-learning',
+  path: '/language-learning',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,30 +37,34 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/language-learning': typeof LanguageLearningRoute
   '/reading': typeof ReadingRoute
   '/spotter': typeof SpotterRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/language-learning': typeof LanguageLearningRoute
   '/reading': typeof ReadingRoute
   '/spotter': typeof SpotterRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/language-learning': typeof LanguageLearningRoute
   '/reading': typeof ReadingRoute
   '/spotter': typeof SpotterRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/reading' | '/spotter'
+  fullPaths: '/' | '/language-learning' | '/reading' | '/spotter'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/reading' | '/spotter'
-  id: '__root__' | '/' | '/reading' | '/spotter'
+  to: '/' | '/language-learning' | '/reading' | '/spotter'
+  id: '__root__' | '/' | '/language-learning' | '/reading' | '/spotter'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LanguageLearningRoute: typeof LanguageLearningRoute
   ReadingRoute: typeof ReadingRoute
   SpotterRoute: typeof SpotterRoute
 }
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReadingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/language-learning': {
+      id: '/language-learning'
+      path: '/language-learning'
+      fullPath: '/language-learning'
+      preLoaderRoute: typeof LanguageLearningRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LanguageLearningRoute: LanguageLearningRoute,
   ReadingRoute: ReadingRoute,
   SpotterRoute: SpotterRoute,
 }

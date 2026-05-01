@@ -21,11 +21,11 @@
  *    match's end index so React remounts it on each new event.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useApiKeys } from "../../../../apiKeys.js";
 import type { ModeMatch, ModeViewProps } from "../types.js";
-import { deriveDraftState, type PendingEdit } from "./deriveDraft.js";
-import { applyLlmEdit, describeLlmEditError } from "./llmEdit.js";
+import { deriveDraftState } from "./deriveDraft.js";
+import { useEditDispatch } from "./useEditDispatch.js";
 
 type AnimationKind = "send" | "clear" | "cancel";
 
@@ -100,54 +100,16 @@ export function EditView({
         ? KEY_MISSING_MESSAGE
         : null;
 
-  // Kick off the LLM call for any pending edit block we haven't resolved
-  // yet. Keyed on the pending edit's stable key so we don't re-fire on
-  // unrelated re-renders.
   const pendingEdit = derived.pendingEdit;
   const pendingKey = pendingEdit === null ? null : pendingEdit.key;
-  useEffect(() => {
-    if (pendingEdit === null) return;
-    if (keyMissing) return;
-    // Snapshot openai value — the effect re-runs if it changes anyway.
-    const apiKey = openai === null ? "" : openai;
-    if (apiKey.length === 0) return;
-    const controller = new AbortController();
-    const block: PendingEdit = pendingEdit;
-    let cancelled = false;
-    applyLlmEdit({
-      apiKey,
-      draft: block.draftBefore,
-      instructions: block.instructions,
-      signal: controller.signal,
-    })
-      .then((result) => {
-        if (cancelled) return;
-        setAppliedEdits((prev) => {
-          if (prev.has(block.key)) return prev;
-          const next = new Map(prev);
-          next.set(block.key, result);
-          return next;
-        });
-        setEditError(null);
-      })
-      .catch((e: unknown) => {
-        if (cancelled) return;
-        if (e instanceof DOMException && e.name === "AbortError") return;
-        setEditError(describeLlmEditError(e));
-        // Fall back to the unedited draft so the walker can move past
-        // this block on the next render.
-        setAppliedEdits((prev) => {
-          if (prev.has(block.key)) return prev;
-          const next = new Map(prev);
-          next.set(block.key, block.draftBefore);
-          return next;
-        });
-      });
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, [pendingKey, pendingEdit, openai, keyMissing]);
+  useEditDispatch({
+    pendingKey,
+    pendingEdit,
+    openai,
+    keyMissing,
+    setAppliedEdits,
+    setEditError,
+  });
 
   return (
     <div className="h-full flex flex-col">
