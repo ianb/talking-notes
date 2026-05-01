@@ -80,6 +80,15 @@ export function Header({
           >
             {PROVIDER_DISPLAY[provider]}
           </Link>
+          {provider === "deepgram" && activeModeId === "language-learning" ? (
+            <Link
+              to="/"
+              className="text-xs px-2 py-0.5 rounded-full border bg-amber-900/40 border-amber-700/60 text-amber-200 hover:bg-amber-900/60"
+              title="Deepgram doesn't handle mixed Spanish + English well in our experience. Switch to Voxtral on the home screen for better results in language-learning mode."
+            >
+              ⚠ mixed-language
+            </Link>
+          ) : null}
         </div>
         <div className="flex items-center gap-2">
           <button

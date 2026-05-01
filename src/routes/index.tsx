@@ -111,7 +111,8 @@ function HomeScreen() {
         <header className="space-y-2">
           <h1 className="text-3xl font-bold">Talking Notes</h1>
           <p className="text-gray-400">
-            Configure API keys, then choose an experience.
+            Pick a transcription provider, jump into an experience, and
+            paste your API keys at the bottom when you need them.
           </p>
         </header>
 
@@ -135,8 +136,37 @@ function HomeScreen() {
           </div>
           <p className="text-xs text-gray-500">
             Switch providers if one isn't working well. Each demo uses the
-            currently-selected one.
+            currently-selected one. Voxtral handles mixed-language speech
+            (e.g. language-learning mode) better than Deepgram.
           </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+            Experiences
+          </h2>
+          <Link
+            to="/reading"
+            className="block rounded-lg border border-gray-700 hover:border-blue-500 bg-gray-900/40 px-5 py-4 transition-colors"
+          >
+            <div className="font-semibold text-gray-100">Reading Demo</div>
+            <p className="text-sm text-gray-400 mt-1">
+              Read a document while speaking your thoughts; an LLM stitches
+              the result into an annotated journal.
+            </p>
+          </Link>
+          <Link
+            to="/spotter"
+            className="block rounded-lg border border-gray-700 hover:border-blue-500 bg-gray-900/40 px-5 py-4 transition-colors"
+          >
+            <div className="font-semibold text-gray-100">Spotter</div>
+            <p className="text-sm text-gray-400 mt-1">
+              Live transcription with switchable keyword modes — notes,
+              edit (LLM-driven message rewrites), and language learning
+              (Spanish dictation with bracketed English questions and
+              critiques).
+            </p>
+          </Link>
         </section>
 
         <section className="space-y-4">
@@ -167,34 +197,6 @@ function HomeScreen() {
             onChange={setDeepgramInput}
             onBlur={handleSaveDeepgram}
           />
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
-            Experiences
-          </h2>
-          <Link
-            to="/reading"
-            className="block rounded-lg border border-gray-700 hover:border-blue-500 bg-gray-900/40 px-5 py-4 transition-colors"
-          >
-            <div className="font-semibold text-gray-100">Reading Demo</div>
-            <p className="text-sm text-gray-400 mt-1">
-              Read a document while speaking your thoughts; an LLM stitches
-              the result into an annotated journal.
-            </p>
-          </Link>
-          <Link
-            to="/spotter"
-            className="block rounded-lg border border-gray-700 hover:border-blue-500 bg-gray-900/40 px-5 py-4 transition-colors"
-          >
-            <div className="font-semibold text-gray-100">Spotter</div>
-            <p className="text-sm text-gray-400 mt-1">
-              Live transcription with switchable keyword modes — notes,
-              edit (LLM-driven message rewrites), and language learning
-              (Spanish dictation with bracketed English questions and
-              critiques).
-            </p>
-          </Link>
         </section>
       </div>
     </div>
